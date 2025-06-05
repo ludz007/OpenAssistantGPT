@@ -1,16 +1,30 @@
-// app/api/auth/[...nextauth]/route.js
+// File: /app/api/auth/[...nextauth]/route.ts
 
 import NextAuth from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// By exporting this, Next.js will not attempt to statically import
-// or “collect” this route at build time. It will only invoke
-// NextAuth(authOptions) when an actual GET or POST request arrives.
+// ───────────────────────────────────────────────────────────────
+// Instruct Next.js: “Do not attempt to statically import / collect
+// this route at build time. Only run when a real request comes in.”
+// ───────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
 
-// Create a single NextAuth handler instance. This function
-// itself does not call database or session‐fetch until a request hits.
+/**
+ * Create your NextAuth handler. This alone does NOT run until an actual
+ * GET or POST request is made. By using `export function GET/POST`, we
+ * guarantee “lazy” invocation.
+ */
 const handler = NextAuth(authOptions);
 
-// Export the handler for both GET and POST requests (required by NextAuth)
-export { handler as GET, handler as POST };
+/**
+ * Next.js expects separate GET and POST exports for a catch-all next-auth route.
+ * When /api/auth/… is called with GET (e.g. a health check), NextAuth handles it.
+ * When it’s called with POST (e.g. sign-in, callback), NextAuth handles that too.
+ */
+export function GET(request: Request) {
+  return handler(request);
+}
+
+export function POST(request: Request) {
+  return handler(request);
+}
