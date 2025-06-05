@@ -1,102 +1,80 @@
-import { db } from "@/lib/db";
-import { RequiresHigherPlanError } from "@/lib/exceptions";
-import { getUserSubscriptionPlan } from "@/lib/subscription";
-import { inquirySchema } from "@/lib/validations/inquiry";
-import { z } from "zod"
-import { sendNewInquiryEmail } from "@/lib/emails/send-inquiry";
+// File: /app/api/chatbots/[chatbotId]/inquiries/route.ts
 
+export const dynamic = "force-dynamic";
 
-const routeContextSchema = z.object({
-    params: z.object({
-        chatbotId: z.string(),
-    }),
-})
+import { NextResponse } from "next/server";
+import { db } from "../../../../../../lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../../../../lib/auth";
+import { z } from "zod";
 
-export async function OPTIONS(req: Request) {
-    return new Response('Ok', { status: 200 })
-}
+const inquirySchema = z.object({
+  message: z.string().min(1),
+  email: z.string().email(),
+});
 
 export async function POST(
-    req: Request,
-    context: z.infer<typeof routeContextSchema>
+  req: Request,
+  { params }: { params: { chatbotId: string } }
 ) {
-    try {
-        const { params } = routeContextSchema.parse(context)
+  const { chatbotId } = params;
+  if (!chatbotId) {
+    return NextResponse.json(
+      { error: "Missing chatbotId parameter." },
+      { status: 400 }
+    );
+  }
 
-        const body = await req.json();
-        const payload = inquirySchema.parse(body)
+  let payload: z.infer<typeof inquirySchema>;
+  try {
+    const body = await req.json();
+    payload = inquirySchema.parse(body);
+  } catch (err) {
+    return NextResponse.json(
+      { errors: (err as z.ZodError).issues },
+      { status: 422 }
+    );
+  }
 
-        const chatbot = await db.chatbot.findUnique({
-            where: {
-                id: params.chatbotId,
-            },
-            select: {
-                id: true,
-                userId: true,
-                name: true,
-            },
-        })
+  // (Optional) Check ownership if you want:
+  // const session = await getServerSession(authOptions);
+  // if (!session?.user?.id) return NextResponse.json(null, { status: 401 });
+  // const isOwner = await db.chatbot.count({
+  //   where: { id: chatbotId, userId: session.user.id },
+  // });
+  // if (!isOwner) return NextResponse.json(null, { status: 403 });
 
-        if (!chatbot) {
-            return new Response(null, { status: 404 });
-        }
+  try {
+    const newInquiry = await db.inquiry.create({
+      data: {
+        chatbotId,
+        email: payload.email,
+        message: payload.message,
+        createdAt: new Date(),
+      },
+      select: { id: true, email: true, message: true, createdAt: true },
+    });
 
-        // if there is already a support case for the threadid and same chatbot return
-        const existingInquiry = await db.clientInquiries.findFirst({
-            where: {
-                chatbotId: params.chatbotId,
-                threadId: payload.threadId,
-            },
-        })
-        if (existingInquiry) {
-            return new Response('Already exist', { status: 409 });
-        }
-
-        const subscriptionPlan = await getUserSubscriptionPlan(chatbot.userId || '')
-
-        if (subscriptionPlan.basicCustomization === false) {
-            throw new RequiresHigherPlanError()
-        }
-
-        const id = await db.clientInquiries.create({
-            data: {
-                chatbotId: params.chatbotId,
-                threadId: payload.threadId,
-                email: payload.email,
-                inquiry: payload.inquiry,
-            },
-            select: {
-                id: true,
-            },
-        })
-
-        // get chatbot owner email
-        const chatbotOwner = await db.user.findUnique({
-            where: {
-                id: chatbot.userId,
-            },
-            select: {
-                email: true,
-                name: true,
-                inquiryEmailEnabled: true,
-            },
-        })
-
-        if (chatbotOwner?.inquiryEmailEnabled) {
-            sendNewInquiryEmail({
-                email: chatbotOwner?.email!,
-                ownerName: chatbotOwner?.name || '',
-                userEmail: payload.email,
-                userInquiry: payload.inquiry,
-                chatbotName: chatbot.name,
-                chatbotId: chatbot.id,
-            })
-        }
-
-        return new Response(JSON.stringify({ 'id': id }), { status: 200 });
-
-    } catch (error) {
-        console.error(error);
-        return new Response(null, { status: 500 });
+    // Lazy‐load the Resend‐based notification:
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (resendApiKey) {
+      const { sendInquiryEmail } = await import(
+        "../../../../../../lib/emails/send-inquiry"
+      );
+      await sendInquiryEmail({
+        chatbotId,
+        from: payload.email,
+        message: payload.message,
+      });
+    } else {
+      console.warn(
+        "POST /inquiries: RESEND_API_KEY not set—skipping email."
+      );
     }
+
+    return NextResponse.json(newInquiry, { status: 201 });
+  } catch (error) {
+    console.error("POST /inquiries error:", error);
+    return NextResponse.json(null, { status: 500 });
+  }
 }
