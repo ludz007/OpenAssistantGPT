@@ -10,22 +10,21 @@ export async function sendInquiryEmail(params: {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey) {
     console.warn(
-      "sendInquiryEmail: RESEND_API_KEY is not set. Skipping email notification."
+      "sendInquiryEmail: RESEND_API_KEY not set; skipping email."
     );
     return;
   }
 
-  // Dynamically import Resend so this module never breaks at build time.
+  // Only import Resend after EV is loaded at runtime:
   const { Resend } = await import("resend");
   const resend = new Resend(resendApiKey);
 
-  // Customize your email options however you like:
   const emailOptions: ResendEmailOptions = {
     from: "no-reply@yourdomain.com",
-    to: "owner@yourdomain.com", // or fetch the chatbot owner’s email from DB if needed
-    subject: `New Inquiry for Chatbot ${params.chatbotId}`,
+    to: "owner@yourdomain.com",
+    subject: `New inquiry for Chatbot ${params.chatbotId}`,
     html: `
-      <p>You have a new inquiry for your chatbot (ID: ${params.chatbotId}).</p>
+      <p>You have a new inquiry for Chatbot ID: ${params.chatbotId}</p>
       <p><strong>From:</strong> ${params.from}</p>
       <p><strong>Message:</strong><br/>${params.message}</p>
     `,
