@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation"
-import { allDocs } from "contentlayer/generated"
+import { allDoc } from "contentlayer/generated"
 
 import { getTableOfContents } from "@/lib/toc"
 import { Mdx } from "@/components/mdx-components"
