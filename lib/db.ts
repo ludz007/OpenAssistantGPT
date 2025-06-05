@@ -1,18 +1,26 @@
-import { PrismaClient } from '@prisma/client'
+// File: /lib/db.ts
+
+import { PrismaClient } from "@prisma/client";
 
 declare global {
+  // For __DEV__‐mode hot reloading, we attach PrismaClient
+  // to the global object so we don't create multiple instances.
   // eslint-disable-next-line no-var
-  var cachedPrisma: PrismaClient
+  var cachedPrisma: PrismaClient;
 }
 
-let prisma: PrismaClient
+let prisma: PrismaClient;
+
 if (process.env.NODE_ENV === "production") {
-  prisma = new PrismaClient()
+  prisma = new PrismaClient();
 } else {
+  // In development, use a global variable so we don't create
+  // a new PrismaClient on every file change (hot reload).
   if (!global.cachedPrisma) {
-    global.cachedPrisma = new PrismaClient()
+    global.cachedPrisma = new PrismaClient();
   }
-  prisma = global.cachedPrisma
+  prisma = global.cachedPrisma;
 }
 
-export const db = prisma
+// Export the client as `db`
+export const db = prisma;
