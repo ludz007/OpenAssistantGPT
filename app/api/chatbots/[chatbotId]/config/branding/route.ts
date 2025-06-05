@@ -1,26 +1,33 @@
 // File: /app/api/chatbots/[chatbotId]/config/branding/route.ts
 
 import { NextResponse } from "next/server";
-import { authOptions } from "@/lib/auth";
+// Relative path to lib/auth.ts (go up 6 levels: /app → /api → /chatbots → /[chatbotId] → /config → /branding)
+import { authOptions } from "../../../../../../../lib/auth";
 import { getServerSession } from "next-auth";
 import { z } from "zod";
-import prisma from "@/lib/prisma";      // adjust path if needed
-import { RequiresHigherPlanError } from "@/lib/exceptions";
-import { getUserSubscriptionPlan } from "@/lib/subscription";
-import { chatBrandingSettingsSchema } from "@/lib/validations/chatBrandingConfig";
+// Relative path to your Prisma client (lib/prisma.ts)
+import prisma from "../../../../../../../lib/prisma";
+// Relative path to RequiresHigherPlanError (lib/exceptions.ts)
+import { RequiresHigherPlanError } from "../../../../../../../lib/exceptions";
+// Relative path to subscription logic (lib/subscription.ts)
+import { getUserSubscriptionPlan } from "../../../../../../../lib/subscription";
+// Relative path to your Zod schema (lib/validations/chatBrandingConfig.ts)
+import { chatBrandingSettingsSchema } from "../../../../../../../lib/validations/chatBrandingConfig";
 
 // ────────────────────────────────────────────────────────────────────────────────────
-// Prevent Next.js from statically collecting this API route at build time.
-// Only run this code when a request actually arrives.
+// Prevent Next.js from trying to import/collect this route at build time.
+// Only run code here when an actual HTTP PATCH request comes in.
 // ────────────────────────────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
 
+// Validate the route param “chatbotId”
 const paramsSchema = z.object({
   chatbotId: z.string().nonempty("chatbotId is required"),
 });
 
-/**
- * Helper: Check if the current user (from session) owns this chatbotId.
+/** 
+ * Helper: Check that the logged‐in user actually owns this chatbot.
+ * All DB calls are inside this function so nothing runs at build time.
  */
 async function verifyCurrentUserHasAccessToChatbot(chatbotId: string) {
   const session = await getServerSession(authOptions);
@@ -40,19 +47,20 @@ export async function PATCH(
   req: Request,
   { params }: { params: { chatbotId: string } }
 ) {
-  // 1) Validate the chatbotId parameter
+  // 1) Validate and extract chatbotId
   let chatbotId: string;
   try {
     ({ chatbotId } = paramsSchema.parse(params));
-  } catch (parseError) {
+  } catch (err) {
+    // ZodError if chatbotId is missing
     return NextResponse.json(
-      { errors: (parseError as z.ZodError).issues },
+      { errors: (err as z.ZodError).issues },
       { status: 400 }
     );
   }
 
   try {
-    // 2) Verify ownership
+    // 2) Verify user owns this chatbot
     if (!(await verifyCurrentUserHasAccessToChatbot(chatbotId))) {
       return NextResponse.json(null, { status: 403 });
     }
@@ -65,13 +73,13 @@ export async function PATCH(
       throw new RequiresHigherPlanError();
     }
 
-    // 4) Parse request body and validate with Zod
+    // 4) Parse and validate request body
     const body = await req.json();
     const payload = chatBrandingSettingsSchema.parse(body);
-    //    chatBrandingSettingsSchema should be something like:
-    //    z.object({ displayBranding: z.boolean() });
+    // chatBrandingSettingsSchema should be something like:
+    //   z.object({ displayBranding: z.boolean() });
 
-    // 5) Update the chatbot’s displayBranding in DB
+    // 5) Perform the DB update
     const updatedChatbot = await prisma.chatbot.update({
       where: { id: chatbotId },
       data: { displayBranding: payload.displayBranding },
@@ -82,23 +90,28 @@ export async function PATCH(
       },
     });
 
-    // 6) Return the updated chatbot record
+    // 6) Return the updated record
     return NextResponse.json(updatedChatbot);
   } catch (error) {
-    console.error("PATCH /config/branding error:", error);
+    console.error("PATCH /branding error:", error);
 
+    // 7) Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { errors: error.issues },
         { status: 422 }
       );
     }
+
+    // 8) Handle “requires higher plan”
     if (error instanceof RequiresHigherPlanError) {
       return NextResponse.json(
         { error: "Requires Higher Plan" },
         { status: 402 }
       );
     }
+
+    // 9) Generic 500
     return NextResponse.json(null, { status: 500 });
   }
 }
