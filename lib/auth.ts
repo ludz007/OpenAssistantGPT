@@ -1,9 +1,13 @@
+// File: /lib/auth.ts
+
 import { type NextAuthOptions } from "next-auth";
-import { PrismaAdapter } from "@next-auth/prisma-adapter"
-import GithubProvider from "next-auth/providers/github"
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 
-import { db } from "@/lib/db"
+// Use a relative import to prisma client (adjust path if your db file is elsewhere)
+import { db } from "./db";
+// Use a relative import to your welcome-email function
 import { sendWelcomeEmail } from "./emails/send-welcome";
 
 export const authOptions: NextAuthOptions = {
@@ -25,31 +29,30 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       allowDangerousEmailAccountLinking: true,
-    })
+    }),
   ],
   callbacks: {
     async session({ token, session }) {
       if (token) {
-        session!.user!.id = token.id
-        session!.user!.name = token.name
-        session!.user!.email = token.email
-        session!.user!.image = token.picture
+        session!.user!.id = token.id;
+        session!.user!.name = token.name;
+        session!.user!.email = token.email;
+        session!.user!.image = token.picture;
       }
-
-      return session
+      return session;
     },
     async jwt({ token, user }) {
       const dbUser = await db.user.findFirst({
         where: {
           email: token.email,
         },
-      })
+      });
 
       if (!dbUser) {
         if (user) {
-          token.id = user?.id
+          token.id = user.id;
         }
-        return token
+        return token;
       }
 
       return {
@@ -57,7 +60,7 @@ export const authOptions: NextAuthOptions = {
         name: dbUser.name,
         email: dbUser.email,
         picture: dbUser.image,
-      }
+      };
     },
   },
   events: {
@@ -67,7 +70,6 @@ export const authOptions: NextAuthOptions = {
         email: message.user.email,
       };
       await sendWelcomeEmail(params);
-    }
+    },
   },
 };
-
