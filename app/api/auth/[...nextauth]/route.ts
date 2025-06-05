@@ -3,28 +3,23 @@
 import NextAuth from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// ───────────────────────────────────────────────────────────────
-// Instruct Next.js: “Do not attempt to statically import / collect
-// this route at build time. Only run when a real request comes in.”
-// ───────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────────
+// Prevent Next.js from trying to import / collect this route’s code at build time.
+// Only run NextAuth(…) when an actual HTTP request arrives.
+// ────────────────────────────────────────────────────────────────────────────────────
 export const dynamic = "force-dynamic";
 
-/**
- * Create your NextAuth handler. This alone does NOT run until an actual
- * GET or POST request is made. By using `export function GET/POST`, we
- * guarantee “lazy” invocation.
- */
+// Create the NextAuth handler. Nothing here runs until handler(request) is called.
 const handler = NextAuth(authOptions);
 
 /**
- * Next.js expects separate GET and POST exports for a catch-all next-auth route.
- * When /api/auth/… is called with GET (e.g. a health check), NextAuth handles it.
- * When it’s called with POST (e.g. sign-in, callback), NextAuth handles that too.
+ * NextAuth requires both GET and POST exports for its catch-all route.
+ * We forward both to the same handler so all NextAuth logic runs at runtime.
  */
-export function GET(request: Request) {
+export async function GET(request: Request) {
   return handler(request);
 }
 
-export function POST(request: Request) {
+export async function POST(request: Request) {
   return handler(request);
 }
