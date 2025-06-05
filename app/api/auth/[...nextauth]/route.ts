@@ -1,18 +1,19 @@
 // File: /app/api/auth/[...nextauth]/route.ts
 
+import type { NextRequest } from "next/server";
 import NextAuth from "next-auth";
-// From this file’s folder (app/api/auth/[...nextauth]/), go up four levels to reach /lib/auth.ts:
-//   [...nextauth] → auth → api → app → (root) → lib/auth
+// Use a relative path to authOptions (app → api → auth → [...nextauth] → root → lib/auth)
 import { authOptions } from "../../../../lib/auth";
 
 export const dynamic = "force-dynamic";
 
-const handler = NextAuth(authOptions);
-
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
+  // Only create the NextAuth handler when an actual GET request arrives:
+  const handler = NextAuth(authOptions);
   return handler(request);
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const handler = NextAuth(authOptions);
   return handler(request);
 }
