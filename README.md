@@ -50,8 +50,8 @@ For more detailed information and implementation guidelines, you can visit our [
     - Better experience for the users
     - More knowledge to pull from 
 
-## Tips 
-  - In order for the chatbot to perform as expected, users should create clearly state their objectives to the chatbot
+## Tips
+  - In order for the chatbot to perform as expected, users should clearly state their objectives to the chatbot
   - The chatbot can be configured to respond with certain message lengths, as well as with a positive tone
   - The chatbot can be configured to inform users that their question is out of scope if the question asked is off topic
 
