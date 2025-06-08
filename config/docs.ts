@@ -71,7 +71,7 @@ export const docsConfig: DocsConfig = {
                 },
                 {
                     title: "Build smart assistant chatbot for your website",
-                    href: "/guides/how-to-build-smart-chatbot-for-your-webiste",
+                    href: "/guides/how-to-build-smart-chatbot-for-your-website",
                 },
                 {
                     title: "How to use message exports correctly",
