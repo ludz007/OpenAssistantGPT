@@ -63,10 +63,6 @@ export type SiteConfig = {
   }
 }
 
-export type UserSubscriptionPlan = SubscriptionPlan &
-  Pick<User, "stripeCustomerId" | "stripeSubscriptionId"> & {
-    stripeCurrentPeriodEnd: number
-  }
 
 export type ChatbotConfig = {
   id: number
