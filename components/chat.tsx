@@ -107,11 +107,14 @@ export function Chat({ chatbot, defaultMessage, className, withExitX = false, cl
 
     if (response.ok) {
       setSendInquiry(false)
-      messages.push({
-        id: String(messages.length + 1),
-        role: 'assistant',
-        content: chatbot.inquiryAutomaticReplyText,
-      })
+      setMessages(messages => [
+        ...messages,
+        {
+          id: String(messages.length + 1),
+          role: 'assistant',
+          content: chatbot.inquiryAutomaticReplyText,
+        },
+      ])
     } else {
       console.error(`Failed to send inquiry: ${response}`)
       toast({
