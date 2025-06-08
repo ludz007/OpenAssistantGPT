@@ -23,7 +23,7 @@ export default function Chatbot() {
     };
 
     useEffect(() => {
-        window.addEventListener('message', function (event) {
+        function messageListener(event: MessageEvent) {
             var iframe = document.getElementById('openassistantgpt-chatbot-iframe');
             var buttonIframe = document.getElementById('openassistantgpt-chatbot-button-iframe');
 
@@ -71,8 +71,12 @@ export default function Chatbot() {
                     buttonIframe.contentWindow.postMessage('closeChat', '*');
                 }
             }
-        });
-    });
+        }
+        window.addEventListener('message', messageListener);
+        return () => {
+            window.removeEventListener('message', messageListener);
+        };
+    }, []);
 
 
     function Chatbox() {
